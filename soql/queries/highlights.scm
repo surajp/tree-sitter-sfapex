@@ -1,4 +1,4 @@
-; https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide#semantic-token-classification
+; https://github.com/nvim-treesitter/nvim-treesitter/blob/master/CONTRIBUTING.md
 (field_identifier
   (identifier) @property)
 
@@ -35,17 +35,20 @@
 
 (storage_identifier) @type
 
-(_ function_name:(identifier) @function)
+(_ function_name:(identifier) @function.call)
 
-(date_literal) @variable.readonly.defaultLibrary
+(date_literal) @constant.builtin
 
 [
   ","
   "."
   ":"
+] @punctuation.delimiter
+
+[
   "("
   ")"
-] @punctuation
+] @punctuation.bracket
 
 [
   "AND"
@@ -69,14 +72,14 @@
 (decimal) @number
 (currency_literal) @number
 (string_literal) @string
-(date) @variable.readonly
-(date_time) @variable.readonly
+(date) @constant
+(date_time) @constant
 
 [
   "TRUE"
   "FALSE"
   (null_literal)
-] @variable.readonly.defaultLibrary
+] @constant.builtin
 
 [
   "ABOVE"
@@ -128,7 +131,7 @@
   "my_territory"
   "my_team_territory"
   "team"
-] @enumMember
+] @constant
 
 ; With
 [
@@ -140,4 +143,4 @@
   "System_Mode"
   "User_Mode"
   "UserId"
-] @enumMember
+] @constant

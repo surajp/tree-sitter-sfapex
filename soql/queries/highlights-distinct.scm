@@ -1,1 +1,1 @@
-(header_comment) @comment.line
+(header_comment) @comment

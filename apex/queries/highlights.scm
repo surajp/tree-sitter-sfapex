@@ -1,5 +1,5 @@
-;; attempting to match concepts represented here:
-;; https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide
+;; Neovim standard capture names:
+;; https://github.com/nvim-treesitter/nvim-treesitter/blob/master/CONTRIBUTING.md
 
 [
   "["
@@ -7,21 +7,22 @@
   "{"
   "}"
   "?"
-  ";"
-] @punctuation
+] @punctuation.bracket
+
+";" @punctuation.delimiter
 
 ;; Methods
 
 (method_declaration
-  name: (identifier) @method)
+  name: (identifier) @function.method)
 (method_declaration
   type: (type_identifier) @type)
 
 (method_invocation
-  name: (identifier) @method)
+  name: (identifier) @function.method.call)
 (argument_list
   (identifier) @variable)
-(super) @function.defaultLibrary
+(super) @function.builtin
 
 (explicit_constructor_invocation
   arguments: (argument_list
@@ -30,7 +31,7 @@
 ;; Annotations
 
 (annotation
-  name: (identifier) @decorator)
+  name: (identifier) @attribute)
 
 "@" @operator
 
@@ -42,31 +43,31 @@
 
 ;; because itendifying it when declared doesn't carry to use
 ;; leans on the convention that "screaming snake case" is a const
-((identifier) @variable.readonly
-  (#match? @variable.readonly "^_*[A-Z][A-Z\\d_]+$"))
+((identifier) @constant
+  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
 
 (interface_declaration
-  name: (identifier) @interface)
+  name: (identifier) @type)
 (class_declaration
-  name: (identifier) @class)
+  name: (identifier) @type)
 (class_declaration
-  (superclass) @class)
+  (superclass) @type)
 (enum_declaration
-  name: (identifier) @enum)
+  name: (identifier) @type)
 (enum_constant
-  name: (identifier) @enumMember)
+  name: (identifier) @constant)
 
 (interfaces
   (type_list
-    (type_identifier) @interface ))
+    (type_identifier) @type ))
 
 (local_variable_declaration
   (type_identifier) @type )
 
 ( expression_statement (_ (identifier)) @variable)
 
-(type_arguments "<" @punctuation)
-(type_arguments ">" @punctuation)
+(type_arguments "<" @punctuation.bracket)
+(type_arguments ">" @punctuation.bracket)
 
 ; (identifier) @variable
 
@@ -98,7 +99,7 @@
 (method_declaration
   (formal_parameters
     (formal_parameter
-      name: (identifier) @parameter)))
+      name: (identifier) @variable.parameter)))
 
 (enhanced_for_statement
   type: (type_identifier) @type
@@ -135,9 +136,9 @@
     (identifier) @variable))
 
 (constructor_declaration
-  name: (identifier) @class)
+  name: (identifier) @type)
 
-(dml_type) @function.defaultLibrary
+(dml_type) @function.builtin
 
 (bound_apex_expression
   (identifier) @variable)
@@ -159,7 +160,7 @@
 
 (switch_rule
   (switch_label
-    (identifier) @enumMember ))
+    (identifier) @constant ))
 
 (when_sobject_type
   (type_identifier) @type
@@ -211,7 +212,7 @@
 [
   (boolean_type)
   (void_type)
-] @type.defaultLibrary
+] @type.builtin
 
 ; Variables
 
@@ -221,9 +222,9 @@
 (field_declaration
   (modifiers (modifier [(final) (static)])(modifier [(final) (static)]))
   (variable_declarator
-    name: (identifier) @variable.readonly))
+    name: (identifier) @constant))
 
-(this) @variable.defaultLibrary
+(this) @variable.builtin
 
 ; Literals
 
@@ -293,7 +294,7 @@
 ;; I don't love this but couldn't break them up right now
 ;; can't figure out how to let that be special without conflicting
 ;; in the grammar
-"System.runAs" @method.defaultLibrary
+"System.runAs" @function.builtin
 
 (scoped_type_identifier
   (type_identifier) @type)
