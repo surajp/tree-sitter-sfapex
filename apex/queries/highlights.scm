@@ -119,10 +119,6 @@
 (array_type
   element: (type_identifier) @type)
 
-(catch_formal_parameter
-  (type_identifier) @type
-  name: (identifier) @variable)
-
 (return_statement
   (identifier) @variable)
 
@@ -165,7 +161,7 @@
   (switch_label
     (identifier) @enumMember ))
 
-(switch_label
+(when_sobject_type
   (type_identifier) @type
   (identifier) @variable )
 
@@ -253,7 +249,6 @@
   "catch"
   "class"
   "continue"
-  "default"
   "do"
   "else"
   "enum"

@@ -1,3 +1,4 @@
+"use strict";
 const { ci, commaJoined1, joined, dialects } = require("./common.js");
 
 module.exports = function defineGrammar(dialect) {
@@ -16,12 +17,10 @@ module.exports = function defineGrammar(dialect) {
       subquery: ($) => seq("(", $.soql_query_body, ")"),
 
       soql_query_body: ($) => {
-        s = [
+        const s = [
           field("select_clause", $.select_clause),
           field("from_clause", $.from_clause),
-          optional(
-            field("using_clause", alias($.soql_using_clause, $.using_clause))
-          ),
+          optional(field("using_clause", $.using_clause)),
           optional(field("where_clause", $.where_clause)),
           optional(
             field("with_clause", alias($.soql_with_clause, $.with_clause))
@@ -55,8 +54,18 @@ module.exports = function defineGrammar(dialect) {
           $.subquery
         ),
 
-      // USING SCOPE
-      soql_using_clause: ($) => seq(ci("USING SCOPE"), $.using_scope_type),
+      // USING
+      using_clause: ($) =>
+        seq(
+          ci("USING"),
+          choice(
+            $.using_scope_clause,
+            $.using_lookup_clause,
+            $.using_listview_clause
+          )
+        ),
+
+      using_scope_clause: ($) => seq(ci("SCOPE"), $.using_scope_type),
       using_scope_type: ($) =>
         choice(
           ci("delegated"),
@@ -66,6 +75,26 @@ module.exports = function defineGrammar(dialect) {
           ci("my_territory"),
           ci("my_team_territory"),
           ci("team")
+        ),
+
+      using_lookup_clause: ($) =>
+        seq(
+          ci("LOOKUP"),
+          field("lookup_field", $.dotted_identifier),
+          optional($.using_lookup_bind_clause)
+        ),
+
+      // only valid inside a SOSL Returning clause, will parse in non-executable contexts such as SOQL
+      using_listview_clause: ($) => seq(ci("ListView"), "=", $.identifier),
+
+      using_lookup_bind_clause: ($) =>
+        seq(ci("BIND"), commaJoined1($.using_lookup_bind_expression)),
+
+      using_lookup_bind_expression: ($) =>
+        seq(
+          field("field", $.identifier),
+          "=",
+          field("bound_value", $._soql_literal)
         ),
 
       // TYPE OF
@@ -92,49 +121,7 @@ module.exports = function defineGrammar(dialect) {
       for_type: ($) => choice(ci("UPDATE"), ci("REFERENCE"), ci("VIEW")),
 
       // GROUP BY HAVING
-      having_clause: ($) => seq(ci("HAVING"), $._having_boolean_expression),
-
-      _having_boolean_expression: ($) =>
-        choice(
-          $.having_and_expression,
-          $.having_or_expression,
-          $.having_not_expression,
-          $._having_condition_expression
-        ),
-      having_and_expression: ($) =>
-        seq(
-          $._having_condition_expression,
-          repeat1(seq(ci("AND"), $._having_condition_expression))
-        ),
-      having_or_expression: ($) =>
-        seq(
-          $._having_condition_expression,
-          repeat1(seq(ci("OR"), $._having_condition_expression))
-        ),
-      having_not_expression: ($) =>
-        seq(ci("NOT"), $._having_condition_expression),
-      _having_condition_expression: ($) =>
-        choice(
-          seq("(", $._having_boolean_expression, ")"),
-          $.having_comparison_expression
-        ),
-
-      having_comparison_expression: ($) =>
-        seq($.function_expression, $._having_comparison),
-
-      _having_comparison: ($) =>
-        choice($._having_value_comparison, $._having_set_comparison),
-
-      _having_value_comparison: ($) =>
-        seq(
-          $.value_comparison_operator,
-          choice($._soql_literal, $.bound_apex_expression)
-        ),
-      _having_set_comparison: ($) =>
-        seq(
-          $.set_comparison_operator,
-          choice($.comparable_list, $.bound_apex_expression)
-        ),
+      having_clause: ($) => seq(ci("HAVING"), $._boolean_expression),
 
       from_clause: ($) =>
         seq(
@@ -248,8 +235,7 @@ module.exports = function defineGrammar(dialect) {
       update_clause: ($) => seq(ci("UPDATE"), commaJoined1($.update_type)),
       update_type: ($) => choice(ci("TRACKING"), ci("VIEWSTAT")),
 
-      alias_expression: ($) =>
-        seq($._value_expression, optional(ci("AS")), $.identifier),
+      alias_expression: ($) => seq($._value_expression, $.identifier),
 
       // ORDER BY
       order_by_clause: ($) =>
@@ -270,9 +256,9 @@ module.exports = function defineGrammar(dialect) {
           seq(
             field("function_name", alias(ci("GEOLOCATION"), $.identifier)),
             "(",
-            $.decimal,
+            choice($.decimal, $.bound_apex_expression),
             ",",
-            $.decimal,
+            choice($.decimal, $.bound_apex_expression),
             ")"
           )
         ),
@@ -372,13 +358,6 @@ module.exports = function defineGrammar(dialect) {
 
       // Not all valid for SOSL
       _function_name: ($) => field("function_name", $.identifier),
-
-      apex_method_identifier: ($) => seq($.identifier, seq("(", ")")),
-      apex_identifier: ($) =>
-        joined(
-          seq(optional("?"), "."),
-          choice($.identifier, $.apex_method_identifier)
-        ),
       bound_apex_expression: ($) => {
         if (dialect == dialects.APEX) {
           return seq(":", $.expression); // defined in Apex rules

@@ -1,3 +1,4 @@
+"use strict";
 // Adapted from https://github.com/tree-sitter/tree-sitter-java/blob/master/grammar.js
 const {
   ci,
@@ -72,7 +73,6 @@ module.exports = grammar({
     [$.generic_type, $.primary_expression],
     [$._property_navigation, $.explicit_constructor_invocation],
     [$.map_initializer, $.array_initializer],
-    [$.switch_label, $.primary_expression],
     [$.primary_expression, $.java_field_access],
     [$._unannotated_type, $.java_type],
     [$._unannotated_type, $.java_type, $.scoped_type_identifier],
@@ -106,21 +106,27 @@ module.exports = grammar({
         choice(
           seq(
             $.dml_type,
-            optional(seq(ci("as"), $.dml_security_mode)),
-            $.expression
+            optional(
+              field("security_mode", seq(ci("as"), $.dml_security_mode))
+            ),
+            field("target", $.expression)
           ),
           seq(
             alias($.upsert_dml_type, $.dml_type),
-            optional(seq(ci("as"), $.dml_security_mode)),
-            $.expression,
-            optional($._unannotated_type)
+            optional(
+              field("security_mode", seq(ci("as"), $.dml_security_mode))
+            ),
+            field("target", $.expression),
+            optional(field("upsert_key", $._unannotated_type))
           ),
           seq(
             alias($.merge_dml_type, $.dml_type),
-            optional(seq(ci("as"), $.dml_security_mode)),
-            $.expression,
+            optional(
+              field("security_mode", seq(ci("as"), $.dml_security_mode))
+            ),
+            field("target", $.expression),
             " ",
-            $.expression
+            field("merge_with", $.expression)
           )
         )
       ),
@@ -336,7 +342,6 @@ module.exports = grammar({
     field_access: ($) =>
       seq(
         field("object", choice($.primary_expression, $.super)),
-        optional(seq($._property_navigation, $.super)),
         $._property_navigation,
         field("field", choice($.identifier, $.this))
       ),
@@ -344,9 +349,9 @@ module.exports = grammar({
     java_field_access: ($) =>
       seq(token(seq(ci("java"), /[\s\n]*/, ":")), $.field_access),
 
-    _property_navigation: ($) => choice($.safe_navigaion_operator, "."),
+    _property_navigation: ($) => choice($.safe_navigation_operator, "."),
 
-    safe_navigaion_operator: ($) => "?.",
+    safe_navigation_operator: ($) => "?.",
 
     array_access: ($) =>
       seq(
@@ -363,7 +368,6 @@ module.exports = grammar({
           seq(
             field("object", choice($.primary_expression, $.super)),
             $._property_navigation,
-            optional(seq($.super, $._property_navigation)),
             field("type_arguments", optional($.type_arguments)),
             field("name", $.identifier)
           )
@@ -383,8 +387,10 @@ module.exports = grammar({
         ".",
         ci("Version"),
         ".",
-        choice(ci("Request"), seq(/\d+/, ".", /\d+/))
+        choice(ci("Request"), field("version_num", $.version_number))
       ),
+
+    version_number: ($) => seq(/\d+/, ".", /\d+/),
 
     switch_expression: ($) =>
       seq(
@@ -403,13 +409,13 @@ module.exports = grammar({
         ci("when"),
         choice(
           // SObject type var syntax
-          prec.right(
-            commaJoined1(seq(optional($._unannotated_type), $.identifier))
-          ),
+          $.when_sobject_type,
           commaJoined1($.expression),
           ci("else")
         )
       ),
+
+    when_sobject_type: ($) => seq($._unannotated_type, $.identifier),
 
     // Statements
 
@@ -466,20 +472,7 @@ module.exports = grammar({
       ),
 
     catch_clause: ($) =>
-      seq(
-        ci("catch"),
-        "(",
-        $.catch_formal_parameter,
-        ")",
-        field("body", $.block)
-      ),
-
-    catch_formal_parameter: ($) =>
-      seq(
-        optional($.modifiers),
-        $._unannotated_type,
-        $._variable_declarator_id
-      ),
+      seq(ci("catch"), "(", $.formal_parameter, ")", field("body", $.block)),
 
     finally_clause: ($) => seq(ci("finally"), $.block),
 
@@ -761,8 +754,6 @@ module.exports = grammar({
         $._variable_declarator_list,
         choice($.accessor_list, ";")
       ),
-
-    _default_value: ($) => seq("default", field("value", $._element_value)),
 
     interface_declaration: ($) =>
       seq(
